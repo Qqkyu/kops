@@ -104,6 +104,9 @@ const (
 	// VxlanUDP is the port used by VXLAN tunneling over UDP
 	VxlanUDP = 8472
 
+	// CalicoVxlanUDP is the port used by Calico VXLAN tunneling over UDP
+	CalicoVxlanUDP = 4789
+
 	// AWSLBCMetricsPort is reserved for the AWS Load Balancer Controller's metrics.
 	AWSLBCMetricsPort = 9442
 

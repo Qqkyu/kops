@@ -19,6 +19,18 @@ set -x
 
 make test-e2e-install
 
+if [[ "${FORCE_BUILD_KOPS:-}" == "true" && -n "${GCP_PROJECT:-}" ]]; then
+  echo "Building and uploading kops to dynamic staging bucket inside ${GCP_PROJECT}"
+  GCS_BUCKET="gs://${GCP_PROJECT}-kops-staging"
+  gcloud storage buckets create "${GCS_BUCKET}" --project="${GCP_PROJECT}" --location=us-east1 || true
+  export GCS_LOCATION="${GCS_BUCKET}"
+  make gcs-publish-ci
+  KOPS_BASE_URL=$(cat .build/upload/latest-ci.txt)
+  export KOPS_BASE_URL
+  echo "Staged local kops build at KOPS_BASE_URL=${KOPS_BASE_URL}"
+  export PATH="${GOPATH}/src/k8s.io/kops/.build/dist/linux/$(go env GOARCH):${PATH}"
+fi
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 if [[ -z "${K8S_VERSION:-}" ]]; then
   K8S_VERSION=https://storage.googleapis.com/k8s-release-dev/ci/latest.txt
@@ -81,6 +93,9 @@ if [[ "${CLOUD_PROVIDER}" == "gce" ]]; then
   create_args+=("--set spec.etcdClusters[*].etcdMembers[*].volumeType=hyperdisk-balanced")
 fi
 create_args+=("--networking=${CNI_PLUGIN:-calico}")
+if [[ -z "${CNI_PLUGIN:-}" || "${CNI_PLUGIN}" == "calico" ]]; then
+  create_args+=("--set spec.networking.calico.encapsulationMode=vxlan")
+fi
 if [[ "${CNI_PLUGIN}" == "amazonvpc" ]]; then
   create_args+=("--set spec.networking.amazonVPC.env=ENABLE_PREFIX_DELEGATION=true")
 fi
@@ -163,7 +178,9 @@ KUBETEST2_ARGS+=("--pre-test-cmd=${REPO_ROOT}/tests/e2e/scenarios/scalability/pr
 if [[ -n "${KUBE_FEATURE_GATES:-}" ]]; then
   KUBETEST2_ARGS+=("--kubernetes-feature-gates=${KUBE_FEATURE_GATES}")
 fi
-if [[ "${JOB_TYPE}" == "presubmit" && "${REPO_OWNER}/${REPO_NAME}" == "kubernetes/kops" ]]; then
+if [[ "${FORCE_BUILD_KOPS:-}" == "true" ]]; then
+  KUBETEST2_ARGS+=("--kops-binary-path=${GOPATH}/src/k8s.io/kops/.build/dist/linux/$(go env GOARCH)/kops")
+elif [[ "${JOB_TYPE}" == "presubmit" && "${REPO_OWNER}/${REPO_NAME}" == "kubernetes/kops" ]]; then
   KUBETEST2_ARGS+=("--build")
   KUBETEST2_ARGS+=("--kops-binary-path=${GOPATH}/src/k8s.io/kops/.build/dist/linux/$(go env GOARCH)/kops")
 elif [[ "${JOB_TYPE}" == "presubmit" && "${REPO_OWNER}/${REPO_NAME}" == "kubernetes/kubernetes" ]]; then
@@ -238,6 +255,13 @@ else
   CLUSTERLOADER2_ARGS+=("--extra-args=--experimental-prometheus-snapshot-to-report-dir=true")
   CLUSTERLOADER2_ARGS+=("--v=2")
 fi
+
+if [[ "${CLOUD_PROVIDER}" == "gce" ]]; then
+  CLUSTERLOADER2_ARGS+=("--prometheus-pvc-storage-class=ssd")
+  CLUSTERLOADER2_ARGS+=("--extra-args=--prometheus-storage-class-provisioner=pd.csi.storage.gke.io")
+fi
+
+
 
 # ToDo: remove this once we can run the huge-service test on AWS
 if [[ -z "${KOPS_CL2_TEST_CONFIG}" && "${CLOUD_PROVIDER}" == "gce" ]]; then

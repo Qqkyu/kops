@@ -29,3 +29,16 @@ if [[ "${CLOUD_PROVIDER}" == "gce" ]]; then
   # TODO: Replaced with `kops validate instancegroup --wait 10m` when it's fixed for 5k node clusters.
   sleep 120 # should take around 2 minutes to get node read
 fi
+
+# Run test-specific pre-test script if it exists
+if [[ -n "${KOPS_CL2_TEST_CONFIG:-}" ]]; then
+  TEST_DIR=$(dirname "${KOPS_CL2_TEST_CONFIG}")
+  TEST_PRE_TEST="${GOPATH}/src/k8s.io/perf-tests/clusterloader2/${TEST_DIR}/pre-test.sh"
+  if [[ -f "${TEST_PRE_TEST}" ]]; then
+    kubectl create namespace scraper || true
+    echo "Running test-specific pre-test script: ${TEST_PRE_TEST}"
+    chmod +x "${TEST_PRE_TEST}"
+    "${TEST_PRE_TEST}"
+  fi
+fi
+
