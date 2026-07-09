@@ -149,7 +149,6 @@ func (b *FirewallModelBuilder) Build(c *fi.CloudupModelBuilderContext) error {
 		if b.NetworkingIsCalico() {
 			t.Allowed = append(t.Allowed, "ipip")
 			t.Allowed = append(t.Allowed, fmt.Sprintf("tcp:%d", wellknownports.BGP))
-			t.Allowed = append(t.Allowed, fmt.Sprintf("udp:%d", wellknownports.CalicoVxlanUDP))
 			t.Allowed = append(t.Allowed, fmt.Sprintf("tcp:%d", wellknownports.KubeControllerManagerMetricsPort))
 			t.Allowed = append(t.Allowed, fmt.Sprintf("tcp:%d", wellknownports.KubeSchedulerMetricsPort))
 			t.Allowed = append(t.Allowed, fmt.Sprintf("tcp:%d", wellknownports.KubeProxyMetricsPort))

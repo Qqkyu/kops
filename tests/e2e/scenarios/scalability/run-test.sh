@@ -93,9 +93,6 @@ if [[ "${CLOUD_PROVIDER}" == "gce" ]]; then
   create_args+=("--set spec.etcdClusters[*].etcdMembers[*].volumeType=hyperdisk-balanced")
 fi
 create_args+=("--networking=${CNI_PLUGIN:-calico}")
-if [[ -z "${CNI_PLUGIN:-}" || "${CNI_PLUGIN}" == "calico" ]]; then
-  create_args+=("--set spec.networking.calico.encapsulationMode=vxlan")
-fi
 if [[ "${CNI_PLUGIN}" == "amazonvpc" ]]; then
   create_args+=("--set spec.networking.amazonVPC.env=ENABLE_PREFIX_DELEGATION=true")
 fi
@@ -254,11 +251,6 @@ else
   CLUSTERLOADER2_ARGS+=("--test-overrides=${GOPATH}/src/k8s.io/perf-tests/clusterloader2/testing/overrides/5000_nodes.yaml")
   CLUSTERLOADER2_ARGS+=("--extra-args=--experimental-prometheus-snapshot-to-report-dir=true")
   CLUSTERLOADER2_ARGS+=("--v=2")
-fi
-
-if [[ "${CLOUD_PROVIDER}" == "gce" ]]; then
-  CLUSTERLOADER2_ARGS+=("--prometheus-pvc-storage-class=ssd")
-  CLUSTERLOADER2_ARGS+=("--extra-args=--prometheus-storage-class-provisioner=pd.csi.storage.gke.io")
 fi
 
 
